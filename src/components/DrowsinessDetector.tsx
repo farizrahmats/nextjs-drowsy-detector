@@ -20,6 +20,8 @@ export default function DrowsinessDetector() {
   const [hourlyHistory, setHourlyHistory] = useState<Record<string, number>>(
     {}
   );
+  const [showModal, setShowModal] = useState(false);
+const [modalScore, setModalScore] = useState(0);
 
   const yawnStartRef = useRef<number | null>(null);
   const eyeClosedStartRef = useRef<number | null>(null);
@@ -218,10 +220,12 @@ export default function DrowsinessDetector() {
     ) {
       if (now - lastNotifyRef.current > NOTIFY_COOLDOWN) {
         console.log("🔔 NOTIFICATION TRIGGERED", totalScore);
-        alert(
-          `⚠️ Kamu terdeteksi mengantuk!\n\nSkor kantuk: ${totalScore}\nSebaiknya istirahat sebentar.`
-        );
-        
+        // alert(
+        //   `⚠️ Kamu terdeteksi mengantuk!\n\nSkor kantuk: ${totalScore}\nSebaiknya istirahat sebentar.`
+        // );
+        setModalScore(totalScore);
+    setShowModal(true);
+
         new Notification("⚠️ Kamu terdeteksi mengantuk", {
           body: `Skor kantuk: ${totalScore}. Sebaiknya istirahat sebentar.`,
           icon: "/favicon.ico",
@@ -311,93 +315,144 @@ export default function DrowsinessDetector() {
     };
   }, []);
 
+  const DrowsyModal = () => {
+  if (!showModal) return null;
+
   return (
-    <div className="space-y-4">
-      <video
-        ref={videoRef}
-        className="rounded-lg border max-w-xl"
-        playsInline
-        muted
-      />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 animate-scaleIn">
+        <h2 className="text-xl font-bold text-red-600 mb-2">
+          ⚠️ Kamu Terdeteksi Mengantuk
+        </h2>
 
-      <div className="text-lg font-semibold">
-        Status:{" "}
-        <span
-          className={
-            status === "MENGANTUK"
-              ? "text-red-600"
-              : status === "WASPADA"
-              ? "text-yellow-600"
-              : "text-green-600"
-          }
+        <p className="text-gray-700 mb-4">
+          Skor kantuk kamu saat ini:
+          <span className="font-bold text-red-600"> {modalScore}</span>/100
+        </p>
+
+        <p className="text-sm text-gray-800 mb-6">
+          Disarankan untuk berhenti sejenak, minum air, atau beristirahat.
+        </p>
+
+        <button
+          onClick={() => setShowModal(false)}
+          className="w-full py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition"
         >
-          {status}
-        </span>
+          Saya Mengerti
+        </button>
+      </div>
+    </div>
+  );
+};
+
+
+  return (
+  <div className="max-w-5xl mx-auto space-y-6">
+    {/* MODAL */}
+    <DrowsyModal />
+
+    {/* HEADER */}
+    <div className="flex items-center justify-between">
+      <h1 className="text-2xl font-bold">Drowsiness Monitor</h1>
+
+      <span
+        className={`px-4 py-1 rounded-full text-sm font-semibold ${
+          status === "MENGANTUK"
+            ? "bg-red-100 text-red-700"
+            : status === "WASPADA"
+            ? "bg-yellow-100 text-yellow-700"
+            : "bg-green-100 text-green-700"
+        }`}
+      >
+        {status}
+      </span>
+    </div>
+
+    {/* MAIN GRID */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* CAMERA CARD */}
+      <div className="bg-white rounded-xl shadow p-4">
+        <video
+          ref={videoRef}
+          className="rounded-lg w-full"
+          playsInline
+          muted
+        />
       </div>
 
-      <div className="text-sm">
-        Menguap:{" "}
-        <span className={isYawning ? "text-red-600 font-bold" : ""}>
-          {isYawning ? "YA 🥱" : "TIDAK"}
-        </span>
-      </div>
-
-      <div className="space-y-1">
-        <div className="text-lg font-bold">
-          Skor Kantuk:{" "}
-          <span
-            className={
+      {/* STATUS CARD */}
+      <div className="bg-white rounded-xl shadow p-6 space-y-4">
+        <div>
+          <p className="text-sm text-gray-500">Skor Kantuk</p>
+          <p
+            className={`text-4xl font-bold ${
               drowsyScore >= 60
                 ? "text-red-600"
                 : drowsyScore >= 30
                 ? "text-yellow-600"
                 : "text-green-600"
-            }
+            }`}
           >
             {drowsyScore}
+            <span className="text-lg text-gray-400"> /100</span>
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between text-sm text-gray-500">
+          <span>Menguap</span>
+          <span
+            className={`font-semibold ${
+              isYawning ? "text-red-600" : "text-gray-600"
+            }`}
+          >
+            {isYawning ? "YA 🥱" : "TIDAK"}
           </span>
-          /100
         </div>
 
-        <div className="text-sm text-gray-600">
-          Jumlah terdeteksi hari ini: <b>{todayCount}</b> kali
+        <div className="flex items-center justify-between text-sm text-gray-500">
+          <span>Deteksi hari ini</span>
+          <span className="font-semibold">{todayCount}x</span>
         </div>
-      </div>
 
-      <div className="mt-6">
-        <h3 className="font-semibold mb-2">
-          Riwayat Kantuk Hari Ini (per jam)
-        </h3>
-
-        <div className="flex items-end gap-2 h-32 border p-3 rounded">
-          {Array.from({ length: 24 }).map((_, i) => {
-            const hour = i.toString().padStart(2, "0");
-            const value = hourlyHistory[hour] || 0;
-
-            return (
-              <div key={hour} className="flex flex-col items-center flex-1">
-                <div
-                  className={`w-full rounded ${
-                    value >= 60
-                      ? "bg-red-500"
-                      : value >= 30
-                      ? "bg-yellow-400"
-                      : "bg-green-400"
-                  }`}
-                  style={{ height: `${value}%` }}
-                  title={`${hour}:00 → ${value}`}
-                />
-                <span className="text-[10px] mt-1">{hour}</span>
-              </div>
-            );
-          })}
+        <div className="text-xs text-gray-500 pt-2 border-t">
+          EAR: {ear.toFixed(3)} · MAR: {mar.toFixed(3)}
         </div>
-      </div>
-
-      <div className="text-sm text-gray-600">
-        EAR: {ear.toFixed(3)} <br />
-        MAR: {mar.toFixed(3)}
       </div>
     </div>
-  );
+
+    {/* CHART */}
+    <div className="bg-white rounded-xl shadow p-6 text-gray-500">
+      <h3 className="font-semibold mb-4">
+        Riwayat Kantuk Hari Ini (per jam)
+      </h3>
+
+      <div className="flex items-end gap-2 h-40">
+        {Array.from({ length: 24 }).map((_, i) => {
+          const hour = i.toString().padStart(2, "0");
+          const value = hourlyHistory[hour] || 0;
+
+          return (
+            <div key={hour} className="flex flex-col items-center flex-1">
+              <div
+                className={`w-full rounded-md transition-all ${
+                  value >= 60
+                    ? "bg-red-500"
+                    : value >= 30
+                    ? "bg-yellow-400"
+                    : "bg-green-400"
+                }`}
+                style={{ height: `${value}%` }}
+                title={`${hour}:00 → ${value}`}
+              />
+              <span className="text-[10px] mt-1 text-gray-500">
+                {hour}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </div>
+);
+
 }
