@@ -24,3 +24,15 @@ export function calculateEAR(
 
   return (vertical1 + vertical2) / (2 * horizontal);
 }
+
+export function calculateMAR(
+  top: Point,
+  bottom: Point,
+  left: Point,
+  right: Point
+) {
+  const vertical = distance(top, bottom);
+  const horizontal = distance(left, right);
+
+  return vertical / horizontal;
+}
